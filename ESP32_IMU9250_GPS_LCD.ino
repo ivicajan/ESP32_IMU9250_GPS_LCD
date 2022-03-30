@@ -158,6 +158,8 @@ const char index_html[] PROGMEM = R"rawliteral(
       </div>
     </div>
   </div>
+
+
 <script>
 
 if (!!window.EventSource) {
@@ -206,7 +208,7 @@ source.addEventListener('pitch', function(e) {
 </script>
 </body>
 </html>)rawliteral";
-#endif
+#endif // USE_WEB
 
 void setup() {
   
@@ -245,14 +247,17 @@ void loop() {
   get_MPU_data();
   delay(50);
   #endif
+
   #ifdef USE_MCP
   get_MCP_data();
   delay(50);
   #endif
+
   #ifdef USE_GPS
   get_GPS_data(ss, gps);
   delay(50);
   #endif
+
   #ifdef USE_LCD
   put_on_LCD();
   delay(50);
@@ -264,14 +269,9 @@ void loop() {
   delay(1000);
 }
 
-// DEFINITION OF USED FUNCTIONS 
+// USED FUNCTIONS 
 
-void init_WIFI(void) {
-  // WIFI server in AP mode
-  WiFi.softAP(ssid);
-  Serial.println(WiFi.softAPIP());
-}    
-
+#ifdef USE_LCD
 void init_LCD(void) {
   // LCD INIT
   u8g2.begin();     // Start display library
@@ -281,6 +281,73 @@ void init_LCD(void) {
   u8g2.sendBuffer();
 }
 
+void u8g2_ascii_2(void) {
+  char s[2] = " ";
+  uint8_t x, y;
+  u8g2.drawStr( 0, 0, "ASCII page 2");
+  for( y = 0; y < 6; y++ ) {
+    for( x = 0; x < 16; x++ ) {
+      s[0] = y*16 + x + 160;
+      u8g2.drawStr(x*7, y*10+10, s);
+    }
+  }
+}
+
+void u8g2_prepare(void) {
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setFontRefHeightExtendedText();
+  u8g2.setDrawColor(1);
+  u8g2.setFontPosTop();
+  u8g2.setFontDirection(0);
+}
+
+void put_on_LCD() {
+  // DISPLAY DATA ON LCD 
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_6x10_tf);
+  u8g2.setCursor(0, 0);
+  u8g2.print("HEADING ");
+  u8g2.setCursor(50, 0);
+  u8g2.print(String(heading,1));
+  u8g2.setCursor(90, 0);
+  u8g2.print(String(MPU_heading,1));
+  u8g2.setCursor(0, 10);
+  u8g2.print("PITCH ");
+  u8g2.setCursor(35, 10);
+  u8g2.print(String(pitch,0));
+  u8g2.setCursor(70, 10);
+  u8g2.print("ROLL ");
+  u8g2.setCursor(100, 10);
+  u8g2.print(String(roll,0));
+  u8g2.setCursor(0, 20);
+  u8g2.print("Acc");
+  u8g2.setCursor(35, 20);
+  u8g2.print(String(gValue.x,1));
+  u8g2.setCursor(65, 20);
+  u8g2.print(String(gValue.y,1));
+  u8g2.setCursor(100, 20);
+  u8g2.print(String(gValue.z,1));
+  u8g2.setCursor(0, 30);
+  u8g2.print("Gyro");
+  u8g2.setCursor(35, 30);
+  u8g2.print(String(gyr.x,0));
+  u8g2.setCursor(65, 30);
+  u8g2.print(String(gyr.y,0));
+  u8g2.setCursor(100, 30);
+  u8g2.print(String(gyr.z,0));
+  u8g2.setCursor(0, 40);
+  u8g2.print("Temp (C): ");
+  u8g2.setCursor(70, 40);
+  u8g2.print(String(temperature,1));   // MCP 9808 temp
+  u8g2.setCursor(0, 50);
+  u8g2.print("Total  G:");
+  u8g2.setCursor(70, 50);
+  u8g2.print(String(resultantG,1));
+  u8g2.sendBuffer();  
+}
+#endif
+
+#ifdef USE_MPU
 void init_MPU(void) {
   //MPU 9250
   Wire.begin(SDA_PIN, SCL_PIN);
@@ -311,10 +378,70 @@ void init_MPU(void) {
   myMPU9250.setMagOpMode(AK8963_CONT_MODE_100HZ);
 }   
 
+void get_MPU_data () {
+  gValue = myMPU9250.getGValues();
+  gyr = myMPU9250.getGyrValues();
+  magValue = myMPU9250.getMagValues();
+  angleVal = myMPU9250.getAngles();
+  MPU_temp = myMPU9250.getTemperature();
+  resultantG = myMPU9250.getResultantG(gValue);
+  pitch = myMPU9250.getPitch();
+  roll  = myMPU9250.getRoll();
+  Serial.print("ACCEL (x,y,z)[g]:");
+  Serial.print(gValue.x);
+  Serial.print("   ");
+  Serial.print(gValue.y);
+  Serial.print("   ");
+  Serial.println(gValue.z);
+  Serial.print("TOTAL ACCEL [g]: ");
+  Serial.println(resultantG);
+
+  Serial.print("GYRO [deg/s]: ");
+  Serial.print(gyr.x);
+  Serial.print("   ");
+  Serial.print(gyr.y);
+  Serial.print("   ");
+  Serial.println(gyr.z);
+
+  Serial.print("PITCH   = "); 
+  Serial.print(pitch); 
+  Serial.print("    ROLL    = "); 
+  Serial.println(roll); 
+/*
+  Serial.println("Magnetometer Data in µTesla: ");
+  Serial.print(magValue.x);
+  Serial.print("   ");
+  Serial.print(magValue.y);
+  Serial.print("   ");
+  Serial.println(magValue.z);
+ */  
+  Serial.print("HEADING  MPU:");
+  MPU_heading = atan2(magValue.x, magValue.y) * 180 / Pi + Declination;
+  Serial.print(MPU_heading); 
+  // Compute heading with pitch/roll compensation  
+  Serial.print("        COR: ");
+  float Xh = magValue.x*cos(pitch/180*Pi) + magValue.y*sin(roll/180*Pi)*sin(pitch/180*Pi) - \
+         magValue.z*cos(roll/180*Pi)*sin(pitch/180*Pi);
+  float Yh = magValue.y*cos(roll/180*Pi) + magValue.z*sin(roll/180*Pi);
+  Xh = Xh * 0.9 + magValue.x * 0.1;
+  Yh = Yh * 0.9 + magValue.y * 0.1;
+  heading = atan2(Xh, Yh) * 180 / Pi;
+  heading += Declination ; 
+  if (heading > 360.0) heading -= 360.0;
+  if (heading < 0.0)   heading += 360.0;
+  // ----- Allow for under/overflow
+  if (heading < 0) heading += 360 ;
+  if (heading >= 360) heading -= 360 ;
+  Serial.println(heading); 
+  Serial.println("TEMP MPU: " + String(MPU_temp));
+}
+#endif
+
+#ifdef USE_MCP
 void init_MCP(void) {
   // MCP 9808 init
     int cnt = 0;
-  while (!tempsensor.begin(MCP9808_ADDR)) {
+    while (!tempsensor.begin(MCP9808_ADDR)) {
     Serial.println("Couldn't find MCP9808!");
     cnt++;
     if (cnt > 10) {
@@ -322,58 +449,26 @@ void init_MCP(void) {
     }
     delay(50);
   }
-  // tempsensor.shutdown_wake(0);
-  // delay(250);
   tempsensor.setResolution(3);  // 0.0625°C    250 ms
-  float c = tempsensor.readTempC();
-  Serial.println(" MCP9808 temp: " + String(c));
+  delay(50);
+  temperature = tempsensor.readTempC();
+  Serial.println(" Init value for MCP9808 temp: " + String(temperature));
   Serial.println(" ");
 }    
 
+void get_MCP_data() {
+    // MCP TEMPERATURE
+  temperature = tempsensor.readTempC();
+  Serial.print("TEMP MCP: " + String(temperature));
+}
+#endif
+
+#ifdef USE_GPS
 void init_GPS(void) {
  // GPS init
   ss.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin); 
 }
     
-void init_WEB(void) {
-  // WEB server
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send_P(200, "text/html", index_html, processor);
-  });
-
-  // Handle Web Server Events
-  events.onConnect([](AsyncEventSourceClient *client){
-    if(client->lastId()){
-      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
-    }
-    // send event with message "hello!", id current millis
-    // and set reconnect delay to 1 second
-    client->send("hello!", NULL, millis(), 10000);
-  });
-  server.addHandler(&events);
-  server.begin();
-}  
-
-void u8g2_ascii_2(void) {
-  char s[2] = " ";
-  uint8_t x, y;
-  u8g2.drawStr( 0, 0, "ASCII page 2");
-  for( y = 0; y < 6; y++ ) {
-    for( x = 0; x < 16; x++ ) {
-      s[0] = y*16 + x + 160;
-      u8g2.drawStr(x*7, y*10+10, s);
-    }
-  }
-}
-
-void u8g2_prepare(void) {
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.setFontRefHeightExtendedText();
-  u8g2.setDrawColor(1);
-  u8g2.setFontPosTop();
-  u8g2.setFontDirection(0);
-}
-
 void get_GPS_data(Stream &mySerial, TinyGPSPlus &myGPS) {
     unsigned long start = millis();
     gpsDateOK = false;
@@ -383,7 +478,6 @@ void get_GPS_data(Stream &mySerial, TinyGPSPlus &myGPS) {
      while (ss.available() > 0)
      gps.encode(ss.read());
     } while (millis() - start < 800);
-//       if ((gps.date.isValid()) && (gps.location.age()<1000)) 
        if ((gps.date.isValid()) ) 
         { gpsDateOK = true;
           tSat = String(gps.satellites.value());
@@ -426,7 +520,6 @@ void get_GPS_data(Stream &mySerial, TinyGPSPlus &myGPS) {
           tTime = thour + ":" + tminute + ":" + tsecond;
           tDateTime = tDate + " " + tTime;
           last_second = gps.time.second();
-          //Serial.println(tDateTime);
         }
 
         if ((gps.location.isValid()) && (gps.location.age()<1000)) 
@@ -481,116 +574,33 @@ void get_GPS_data(Stream &mySerial, TinyGPSPlus &myGPS) {
           csvOutStr = tDateTime + "," + tLocation + "," + tTemp + "," + tSpeed + "," + tDist + "," + tTDist + "\n";
           Serial.print(csvOutStr);          
 }
+#endif // USE_GPS
 
-void get_MPU_data () {
-  gValue = myMPU9250.getGValues();
-  gyr = myMPU9250.getGyrValues();
-  magValue = myMPU9250.getMagValues();
-  angleVal = myMPU9250.getAngles();
-  MPU_temp = myMPU9250.getTemperature();
-  resultantG = myMPU9250.getResultantG(gValue);
-  pitch = myMPU9250.getPitch();
-  roll  = myMPU9250.getRoll();
-  
-  float Xh = magValue.x*cos(pitch/180*Pi) + magValue.y*sin(roll/180*Pi)*sin(pitch/180*Pi) - \
-         magValue.z*cos(roll/180*Pi)*sin(pitch/180*Pi);
-  float Yh = magValue.y*cos(roll/180*Pi) + magValue.z*sin(roll/180*Pi);
-  Xh = Xh * 0.9 + magValue.x * 0.1;
-  Yh = Yh * 0.9 + magValue.y * 0.1;
-  Serial.print("ACCEL (x,y,z)[g]:");
-  Serial.print(gValue.x);
-  Serial.print("   ");
-  Serial.print(gValue.y);
-  Serial.print("   ");
-  Serial.println(gValue.z);
-  Serial.print("TOTAL ACCEL [g]: ");
-  Serial.println(resultantG);
+#ifdef USE_WEB
+void init_WIFI(void) {
+  // WIFI server in AP mode
+  WiFi.softAP(ssid);
+  Serial.println(WiFi.softAPIP());
+}    
 
-  Serial.print("GYRO [deg/s]: ");
-  Serial.print(gyr.x);
-  Serial.print("   ");
-  Serial.print(gyr.y);
-  Serial.print("   ");
-  Serial.println(gyr.z);
+void init_WEB(void) {
+  // WEB server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+    request->send_P(200, "text/html", index_html, processor);
+  });
 
-  Serial.print("PITCH   = "); 
-  Serial.print(pitch); 
-  Serial.print("    ROLL    = "); 
-  Serial.println(roll); 
-/*
-  Serial.println("Magnetometer Data in µTesla: ");
-  Serial.print(magValue.x);
-  Serial.print("   ");
-  Serial.print(magValue.y);
-  Serial.print("   ");
-  Serial.println(magValue.z);
- */  
-  Serial.print("HEADING  MPU:");
-  MPU_heading = atan2(magValue.x, magValue.y) * 180 / Pi;
-  Serial.print(MPU_heading); 
-  Serial.print("        COR: ");
-  heading = atan2(Xh, Yh) * 180 / Pi;
-  heading += Declination ; 
-  if (heading > 360.0) heading -= 360.0;
-  if (heading < 0.0)   heading += 360.0;
-  // ----- Allow for under/overflow
-  if (heading < 0) heading += 360 ;
-  if (heading >= 360) heading -= 360 ;
-  Serial.println(heading); 
-}
-
-void get_MCP_data() {
-    // MCP TEMPERATURE
-  float temperature = tempsensor.readTempC();
-  Serial.print("TEMP MCP: " + String(temperature));
-  Serial.println("       MPU: " + String(MPU_temp));
-}
-
-void put_on_LCD() {
-  // DISPLAY DATA ON LCD 
-  Serial.println("********************************************");
-  u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_6x10_tf);
-  u8g2.setCursor(0, 0);
-  u8g2.print("HEADING ");
-  u8g2.setCursor(50, 0);
-  u8g2.print(String(heading,1));
-  u8g2.setCursor(90, 0);
-  u8g2.print(String(MPU_heading,1));
-  u8g2.setCursor(0, 10);
-  u8g2.print("PITCH ");
-  u8g2.setCursor(35, 10);
-  u8g2.print(String(pitch,0));
-  u8g2.setCursor(70, 10);
-  u8g2.print("ROLL ");
-  u8g2.setCursor(100, 10);
-  u8g2.print(String(roll,0));
-  u8g2.setCursor(0, 20);
-  u8g2.print("Acc");
-  u8g2.setCursor(35, 20);
-  u8g2.print(String(gValue.x,1));
-  u8g2.setCursor(65, 20);
-  u8g2.print(String(gValue.y,1));
-  u8g2.setCursor(100, 20);
-  u8g2.print(String(gValue.z,1));
-  u8g2.setCursor(0, 30);
-  u8g2.print("Gyro");
-  u8g2.setCursor(35, 30);
-  u8g2.print(String(gyr.x,0));
-  u8g2.setCursor(65, 30);
-  u8g2.print(String(gyr.y,0));
-  u8g2.setCursor(100, 30);
-  u8g2.print(String(gyr.z,0));
-  u8g2.setCursor(0, 40);
-  u8g2.print("Temp (C): ");
-  u8g2.setCursor(70, 40);
-  u8g2.print(String(temperature,1));   // MCP 9808 temp
-  u8g2.setCursor(0, 50);
-  u8g2.print("Total  G:");
-  u8g2.setCursor(70, 50);
-  u8g2.print(String(resultantG,1));
-  u8g2.sendBuffer();  
-}
+  // Handle Web Server Events
+  events.onConnect([](AsyncEventSourceClient *client){
+    if(client->lastId()){
+      Serial.printf("Client reconnected! Last message ID that it got is: %u\n", client->lastId());
+    }
+    // send event with message "hello!", id current millis
+    // and set reconnect delay to 1 second
+    client->send("hello!", NULL, millis(), 1000);
+  });
+  server.addHandler(&events);
+  server.begin();
+}  
 
 void update_WEB() {
   // UPDATE WEB SERVER
@@ -604,3 +614,4 @@ void update_WEB() {
   events.send(String(last_lat).c_str(),"lat",millis());
   events.send(String(tDateTime).c_str(),"datetime",millis());    
 }
+#endif

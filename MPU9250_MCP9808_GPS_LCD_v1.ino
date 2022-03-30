@@ -79,13 +79,20 @@ const float Declination = 1.0; // Magnetic declination for Perth
 float heading, MPU_heading, pitch, roll, temperature, MPU_temp, resultantG ;
 
 String processor(const String& var){
-//  getSensorReadings();
-  //Serial.println(var);
   if(var == "TEMPERATURE"){
     return String(temperature);
   }
   else if(var == "HEADING"){
     return String(heading);
+  }
+  else if(var == "DATETIME"){
+    return String(tDateTime);
+  }
+  else if(var == "LON"){
+    return String(last_lng);
+  }
+  else if(var == "LAT"){
+    return String(last_lat);
   }
   else if(var == "ROLL"){
     return String(roll);
@@ -101,35 +108,43 @@ const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
   <title>ESP Web Server</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1";>
   <style>
     html {font-family: Arial; display: inline-block; text-align: center;}
     p { font-size: 1.2rem;}
     body {  margin: 0;}
     .topnav { overflow: hidden; background-color: #50B8B4; color: white; font-size: 1rem; }
+    .topnav2 { overflow: hidden; background-color: #50B8B4; color: red; font-size: 1.5rem; }
     .content { padding: 20px; }
     .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5); }
     .cards { max-width: 800px; margin: 0 auto; display: grid; grid-gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-    .reading { font-size: 1.4rem; }
+    .reading { font-size: 1.8rem; }
   </style>
+  <script>
+        function autoRefresh() {
+            window.location = window.location.href;
+        }
+        setInterval('autoRefresh()', 10000);
+  </script>
 </head>
 <body>
   <div class="topnav">
-    <h1>IMU MCP GPS </h1>
+    <h1> GPS lon: <span id="lon"> %LON% </span> &deg N  lat: <span id="lat"> %LAT% </span> &deg S</h1>
+    <h1> <span id="datetime"> %DATETIME% </span> AWST </h1>
+  </div>
+  <div class="topnav2">
+    <h1>Heading: <span id="heading"> %HEADING% </span> &deg N</span></h1>
   </div>
   <div class="content">
     <div class="cards">
       <div class="card">
-        <p><i class="fas fa-tint" style="color:#00add6;"></i> HEADING</p><p><span class="reading"><span id="hum">%HEADING%</span> &deg N;</span></p>
+        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> PITCH  </p><p><span class="reading"><span id="pitch">%PITCH%</span> &deg </span></p>
       </div>
       <div class="card">
-        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> PITCH</p><p><span class="reading"><span id="pitch">%PITCH%</span> &deg; </span></p>
+        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> ROLL   </p><p><span class="reading"><span id="roll">%ROLL%</span> &deg </span></p>
       </div>
       <div class="card">
-        <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> ROLL</p><p><span class="reading"><span id="roll">%ROLL%</span> &deg; </span></p>
-      </div>
-      <div class="card">
-        <p><i class="fas fa-thermometer-half" style="color:#059e8a;"></i> TEMPERATURE</p><p><span class="reading"><span id="temperature">%TEMPERATURE%</span> &deg;C</span></p>
+        <p><i class="fas fa-thermometer-half"  style="color:#059e8a;"></i> TEMPERATURE</p><p><span class="reading"><span id="temperature">%TEMPERATURE%</span> &deg C </span></p>
       </div>
     </div>
   </div>
@@ -145,29 +160,36 @@ if (!!window.EventSource) {
     console.log("Events Disconnected");
   }
  }, false);
- 
  source.addEventListener('message', function(e) {
   console.log("message", e.data);
  }, false);
- 
- source.addEventListener('temperature', function(e) {
+  source.addEventListener('temperature', function(e) {
   console.log("temperature", e.data);
-  document.getElementById("temp").innerHTML = e.data;
+  document.getElementById("temperature").innerHTML = e.data;
  }, false);
- 
- source.addEventListener('heading', function(e) {
+  source.addEventListener('heading', function(e) {
   console.log("heading", e.data);
   document.getElementById("heading").innerHTML = e.data;
  }, false);
- 
- source.addEventListener('pitch', function(e) {
+  source.addEventListener('last_lng', function(e) {
+  console.log("lon", e.data);
+  document.getElementById("lon").innerHTML = e.data;
+ }, false);
+  source.addEventListener('last_lat', function(e) {
+  console.log("lat", e.data);
+  document.getElementById("lat").innerHTML = e.data;
+ }, false);
+source.addEventListener('pitch', function(e) {
   console.log("pitch", e.data);
   document.getElementById("pitch").innerHTML = e.data;
  }, false);
-
  source.addEventListener('roll', function(e) {
   console.log("roll", e.data);
   document.getElementById("roll").innerHTML = e.data;
+ }, false);
+ source.addEventListener('tDateTime', function(e) {
+  console.log("datetime", e.data);
+  document.getElementById("datetime").innerHTML = e.data;
  }, false);
 }
 
@@ -177,7 +199,6 @@ if (!!window.EventSource) {
  
 
 void setup() {
-  int cnt = 0;
   Serial.begin(115200);
 
   init_WIFI();
@@ -320,7 +341,10 @@ void loop() {
   events.send(String(heading).c_str(),"heading",millis());
   events.send(String(roll).c_str(),"roll",millis());
   events.send(String(pitch).c_str(),"pitch",millis()); 
-  delay(50);
+  events.send(String(last_lng).c_str(),"lon",millis()); 
+  events.send(String(last_lat).c_str(),"lat",millis());
+  events.send(String(tDateTime).c_str(),"datetime",millis());  
+  delay(1000);
 }
 
 // DEFINITION OF USED FUNCTIONS 
@@ -340,7 +364,7 @@ void init_LCD(void) {
   u8g2.sendBuffer();
 }
 
-void ini_MPU(void) {
+void init_MPU(void) {
   //MPU 9250
   Wire.begin(SDA_PIN, SCL_PIN);
   if(!myMPU9250.init()){
@@ -355,8 +379,6 @@ void ini_MPU(void) {
   else{
     Serial.println("Magnetometer is connected");
   }
-  delay(50);  
-
   // Calibrate MPU 
   Serial.println("Position you MPU9250 flat and don't move it - calibrating...");
   delay(2000);
@@ -370,10 +392,11 @@ void ini_MPU(void) {
   myMPU9250.enableAccDLPF(true);
   myMPU9250.setAccDLPF(MPU9250_DLPF_6);  
   myMPU9250.setMagOpMode(AK8963_CONT_MODE_100HZ);
-}    
+}   
 
 void init_MCP(void) {
   // MCP 9808 init
+    int cnt = 0;
   while (!tempsensor.begin(MCP9808_ADDR)) {
     Serial.println("Couldn't find MCP9808!");
     cnt++;
@@ -395,8 +418,7 @@ void init_GPS(void) {
   ss.begin(GPSBaud, SERIAL_8N1, RXPin, TXPin); 
 }
     
-init_WEB(void) {
-
+void init_WEB(void) {
   // WEB server
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send_P(200, "text/html", index_html, processor);

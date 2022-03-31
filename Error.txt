@@ -1,0 +1,29 @@
+23:45:00.775 -> Guru Meditation Error: Core  1 panic'ed (LoadProhibited). Exception was unhandled.
+
+23:45:00.775 -> Core 1 register dump:
+
+23:45:00.775 -> PC      : 0x400d85d2  PS      : 0x00060630  A0      : 0x800d8678  A1      : 0x3ffb1e40  
+
+23:45:00.775 -> A2      : 0x3ffd13a8  A3      : 0x04510000  A4      : 0x00000029  A5      : 0x3ffd2628  
+
+23:45:00.775 -> A6      : 0x0000000a  A7      : 0x0d0a0d34  A8      : 0x800d85e0  A9      : 0x3ffb1e20  
+
+23:45:00.775 -> A10     : 0x00000029  A11     : 0x00000029  A12     : 0x00000029  A13     : 0x00000029  
+
+23:45:00.775 -> A14     : 0x00000000  A15     : 0x00000000  SAR     : 0x0000000a  EXCCAUSE: 0x0000001c  
+
+23:45:00.961 -> EXCVADDR: 0x04510000  LBEG    : 0x4008bf98  LEND    : 0x4008bfb4  LCOUNT  : 0xffffffff  
+
+23:45:00.961 -> 
+
+23:45:00.961 -> ELF file SHA256: 0000000000000000
+
+23:45:00.961 -> 
+
+23:45:00.961 -> Backtrace: 0x400d85d2:0x3ffb1e40 0x400d8675:0x3ffb1e60 0x400d8697:0x3ffb1e80 0x400d86f1:0x3ffb1ea0 0x400d1aed:0x3ffb1ed0 0x400d2a66:0x3ffb1f70 0x400e1d01:0x3ffb1fb0 0x4008e2c6:0x3ffb1fd0
+
+23:45:00.961 -> 
+
+23:45:00.961 -> Rebooting...
+
+23:45:00.961 -> ets Jul 29 2019 12:21:46

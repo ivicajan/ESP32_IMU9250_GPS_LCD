@@ -130,23 +130,24 @@ const char index_html[] PROGMEM = R"rawliteral(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       html {font-family: Arial; display: inline-block; text-align: center;}
-      p { font-size: 1.2rem;}
+      p { font-size: 1.5rem;}
       body {  margin: 0;}
-      .topnav { overflow: hidden; background-color: #50B8B4; color: white; font-size: 1rem; }
-      .topnav2 { overflow: hidden; background-color: #50B8B4; color: red; font-size: 1.5rem; }
-      .content { padding: 20px; }
+      .topnav { overflow: hidden; background-color: #50B8B4; color: white; font-size: 0.5rem; }
+      .topnav2 { overflow: hidden; background-color: #50B8B4; color: yellow; font-size: 5rem; }
+      .content { padding: 1px; }
       .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5); }
-      .cards { max-width: 800px; margin: 0 auto; display: grid; grid-gap: 2rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
-      .reading { font-size: 1.8rem; }
+      .cards { max-width: 800px; margin: 0 auto; display: grid; grid-gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+      .reading { font-size: 3rem; }
+      .head { font-size: 8rem; }
     </style>
   </head>
   <body>
     <div class="topnav">
-    <h1> GPS <span id="lon"> %LON% </span> &deg E,  <span id="lat"> %LAT% </span> &deg S</h1>
-    <h1> <span id="datetime"> %DATETIME% </span> AWST </h1>
+    <h3> GPS <span id="lon"> %LON% </span> &deg E,  <span id="lat"> %LAT% </span> &deg S</h3>
+    <h3> <span id="datetime"> %DATETIME% </span> AWST </h3>
     </div>
     <div class="topnav2">
-    <h1>Heading <span id="heading"> %HEADING% </span> &deg</span></h1>
+    <h1> <span id="heading">%HEADING%</span>&deg </h1>
     </div>
     <div class="content">
       <div class="cards">
@@ -156,9 +157,11 @@ const char index_html[] PROGMEM = R"rawliteral(
       <div class="card">
         <p><i class="fas fa-angle-double-down" style="color:#e1e437;"></i> ROLL   </p><p><span class="reading"><span id="roll">%ROLL%</span> &deg </span></p>
       </div>
+<!--
       <div class="card">
         <p><i class="fas fa-thermometer-half"  style="color:#059e8a;"></i> TEMPERATURE</p><p><span class="reading"><span id="temperature">%TEMPERATURE%</span> &deg C </span></p>
       </div>
+-->      
       </div>
     </div>
     <script>
@@ -386,16 +389,16 @@ void imu_get_data() {
   Serial.println(myMPU9250.getOrientationAsString());
 */
   // Send Events to the Web Server with the Sensor Readings
-  events.send(String(imu_readback.heading).c_str(), "heading", millis());
-  events.send(String(imu_readback.pitch).c_str(), "pitch", millis());
-  events.send(String(imu_readback.roll).c_str(), "roll", millis());
+  events.send(String(imu_readback.heading, 0).c_str(), "heading", millis());
+  events.send(String(imu_readback.pitch, 0).c_str(), "pitch", millis());
+  events.send(String(imu_readback.roll, 0).c_str(), "roll", millis());
   delay(50);
 }
 
 void temp_sensor_get_data() {
   temperature = tempsensor.readTempC();
   // Send Events to the Web Server with the Sensor Readings
-  events.send(String(temperature).c_str(), "temperature", millis());
+  events.send(String(temperature, 1).c_str(), "temperature", millis());
   delay(50);
 }
 
@@ -479,7 +482,7 @@ void loop() {
   imu_get_data();
   temp_sensor_get_data();
 
-  Serial.print(" MCP9808 temp: " + String(temperature));
+  Serial.print("MCP9808 temp: " + String(temperature));
   Serial.println("   |    MPU9250 temp: " + String(imu_readback.MPU_temp));
   // GET GPS DATA
   SerialGPSDecode();

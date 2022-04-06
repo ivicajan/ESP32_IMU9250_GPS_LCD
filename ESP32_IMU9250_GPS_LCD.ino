@@ -133,7 +133,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       p { font-size: 1.5rem;}
       body {  margin: 0;}
       .topnav { overflow: hidden; background-color: #50B8B4; color: white; font-size: 0.5rem; }
-      .topnav2 { overflow: hidden; background-color: #50B8B4; color: yellow; font-size: 5rem; }
+      .topnav2 { margin-top: -60px; height:200px; overflow: hidden; background-color: #50B8B4; color: yellow; font-size: 5rem; }
       .content { padding: 1px; }
       .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5); }
       .cards { max-width: 800px; margin: 0 auto; display: grid; grid-gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

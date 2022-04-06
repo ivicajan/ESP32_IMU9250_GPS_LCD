@@ -75,7 +75,15 @@ static IMU_Readback imu_readback;
 
 static float temperature; // MCP temp sensor
 
+//Battery 
+const int MAX_ANALOG_VAL = 4095;
+const float MAX_BATTERY_VOLTAGE = 4.2; // Max LiPoly voltage of a 3.7 battery is 4.2
+float batteryFraction;
+
+
 // functions
+
+
 void u8g2_ascii_2() {
   char s[2] = " ";
   u8g2.drawStr(0, 0, "ASCII page 2");
@@ -133,7 +141,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       p { font-size: 1.5rem;}
       body {  margin: 0;}
       .topnav { overflow: hidden; background-color: #50B8B4; color: white; font-size: 0.5rem; }
-      .topnav2 { margin-top: -60px; height:200px; overflow: hidden; background-color: #50B8B4; color: yellow; font-size: 5rem; }
+      .topnav2 { overflow: hidden; background-color: #50B8B4; color: yellow; font-size: 5rem; }
       .content { padding: 1px; }
       .card { background-color: white; box-shadow: 2px 2px 12px 1px rgba(140,140,140,.5); }
       .cards { max-width: 800px; margin: 0 auto; display: grid; grid-gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
@@ -143,11 +151,11 @@ const char index_html[] PROGMEM = R"rawliteral(
   </head>
   <body>
     <div class="topnav">
-    <h3> GPS <span id="lon"> %LON% </span> &deg E,  <span id="lat"> %LAT% </span> &deg S</h3>
-    <h3> <span id="datetime"> %DATETIME% </span> AWST </h3>
+    <h1> GPS <span id="lon"> %LON% </span> &deg E,  <span id="lat"> %LAT% </span> &deg S</h1>
+    <h1> <span id="datetime"> %DATETIME% </span> AWST </h1>
     </div>
     <div class="topnav2">
-    <h1> <span id="heading">%HEADING%</span>&deg </h1>
+    <h1> <span id="heading">%HEADING%</span>&deg background-color: #50B8B4; color: yellow; font-size: 5rem; </h1>
     </div>
     <div class="content">
       <div class="cards">
@@ -408,7 +416,8 @@ void draw_heading() {
   u8g2.setCursor(50, 0);
   u8g2.print(String(imu_readback.heading, 1));
   u8g2.setCursor(90, 0);
-  u8g2.print(String(imu_readback.MPU_heading, 1));
+  //u8g2.print(String(imu_readback.MPU_heading, 1));
+  u8g2.print(String(batteryFraction * 100, 0) + "%");
 }
 
 void draw_pitch() {
@@ -481,7 +490,13 @@ void update_display() {
 void loop() {
   imu_get_data();
   temp_sensor_get_data();
-
+  
+  int rawValue = analogRead(A13);
+  float voltageLevel = (rawValue / 4095.0) * 2 * 1.1 * 3.3; // calculate voltage level
+  batteryFraction = voltageLevel / MAX_BATTERY_VOLTAGE;
+  
+  Serial.println((String)"Battery: " + (batteryFraction * 100) + "%");
+    
   Serial.print("MCP9808 temp: " + String(temperature));
   Serial.println("   |    MPU9250 temp: " + String(imu_readback.MPU_temp));
   // GET GPS DATA
